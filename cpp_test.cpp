@@ -1,32 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 #include "MeanShift.h"
+#include "Kernel.h"
 
 using namespace std;
 
 vector<vector<double> > load_points(const char *filename) {
     vector<vector<double> > points;
-    FILE *fp = fopen(filename, "r");
-    char line[50];
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        double x, y;
-        char *x_str = line;
-        char *y_str = line;
-        while (*y_str != '\0') {
-            if (*y_str == ',') {
-                *y_str++ = 0;
-                x = atof(x_str);
-                y = atof(y_str);
-                vector<double> point;
-                point.push_back(x);
-                point.push_back(y);
-                points.push_back(point);
-                break;
-            }
-            ++y_str;
-        }
+    ifstream stream_file(filename);
+    while (!stream_file.eof()) {
+        string line;
+        getline(stream_file, line);
+        istringstream stream_line(line);
+        vector<double> point;
+        while(!stream_line.eof()){
+            double coord; char separator;
+            stream_line>>coord;
+            stream_line>>separator;
+            point.push_back(coord);
+        };
+        points.push_back(point);
     }
-    fclose(fp);
+    stream_file.close();
     return points;
 }
 
@@ -41,7 +39,7 @@ void print_points(vector<vector<double> > points){
 
 int main(int argc, char **argv)
 {
-    MeanShift *msp = new MeanShift();
+    MeanShift *msp = new MeanShift(epanechnikov_kernel);
     double kernel_bandwidth = 3;
 
     vector<vector<double> > points = load_points("test.csv");
