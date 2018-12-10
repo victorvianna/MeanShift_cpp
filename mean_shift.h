@@ -11,17 +11,19 @@ struct Cluster {
 class MeanShift {
 public:
     typedef std::vector<double> Point;
-
-    MeanShift() { set_kernel(NULL); }
-    MeanShift(double (*_kernel_func)(double,double)) { set_kernel(_kernel_func); }
+    MeanShift(double (*_kernel_func)(double,double) = gaussian_kernel,
+            std::vector<double> _metric_weights = {});
     std::vector<Point> meanshift(const std::vector<Point> & points,
                                                 double kernel_bandwidth,
                                                 double EPSILON = 0.00001);
     std::vector<Cluster> cluster(const std::vector<Point> &, double);
 
 private:
+    static double gaussian_kernel(double distance, double kernel_bandwidth);
     double (*kernel_func)(double,double);
-    void set_kernel(double (*_kernel_func)(double,double));
+    std::vector<double> metric_weights;
     void shift_point(const Point&, const std::vector<Point> &, double, Point&);
     std::vector<Cluster> cluster(const std::vector<Point> &, const std::vector<Point> &);
+    double get_distance_squared(const std::vector<double> &point_a, const std::vector<double> &point_b);
+    double get_distance(const std::vector<double> &point_a, const std::vector<double> &point_b);
 };

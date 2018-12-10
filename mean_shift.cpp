@@ -1,41 +1,41 @@
 #include <stdio.h>
 #include <math.h>
 #include "mean_shift.h"
+#include<string>
 
 using namespace std;
 
 #define CLUSTER_EPSILON 0.5
 
-double euclidean_distance(const vector<double> &point_a, const vector<double> &point_b){
-    double total = 0;
-    for(int i=0; i<point_a.size(); i++){
-        const double temp = (point_a[i] - point_b[i]);
-        total += temp*temp;
+double MeanShift::get_distance_squared(const vector<double> &point_a, const vector<double> &point_b){
+    int n = point_a.size();
+    if(n != point_b.size() || (metric_weights != vector<double>{} && n != metric_weights.size())){
+        throw std::string("Invalid vector sizes for metric");
     }
-    return sqrt(total);
+    vector<double> weights = (metric_weights == vector<double>{}) ? vector<double>(n, 1) : metric_weights;
+    double total = 0;
+    for(int i=0; i<n; i++){
+        const double temp = (point_a[i] - point_b[i]);
+        total += weights[i]*temp*temp;
+    }
+    return total;
 }
 
-double euclidean_distance_sqr(const vector<double> &point_a, const vector<double> &point_b){
-    double total = 0;
-    for(int i=0; i<point_a.size(); i++){
-        const double temp = (point_a[i] - point_b[i]);
-        total += temp*temp;
-    }
-    return (total);
+double MeanShift::get_distance(const vector<double> &point_a, const vector<double> &point_b){
+    return sqrt(get_distance_squared(point_a, point_b));
 }
 
-double gaussian_kernel(double distance, double kernel_bandwidth){
+double MeanShift::gaussian_kernel(double distance, double kernel_bandwidth){
     double temp =  exp(-1.0/2.0 * (distance*distance) / (kernel_bandwidth*kernel_bandwidth));
     return temp;
 }
 
-void MeanShift::set_kernel( double (*_kernel_func)(double,double) ) {
-    if(!_kernel_func){
-        kernel_func = gaussian_kernel;
-    } else {
-        kernel_func = _kernel_func;    
-    }
+MeanShift::MeanShift(double (*_kernel_func)(double,double),
+        std::vector<double> _metric_weights){
+    metric_weights = _metric_weights;
+    kernel_func = _kernel_func;
 }
+
 
 void MeanShift::shift_point(const Point &point,
                             const std::vector<Point> &points,
@@ -48,7 +48,7 @@ void MeanShift::shift_point(const Point &point,
     double total_weight = 0;
     for(int i=0; i<points.size(); i++){
         const Point& temp_point = points[i];
-        double distance = euclidean_distance(point, temp_point);
+        double distance = get_distance(point, temp_point);
         double weight = kernel_func(distance, kernel_bandwidth);
         for(int j=0; j<shifted_point.size(); j++){
             shifted_point[j] += temp_point[j] * weight;
@@ -75,7 +75,7 @@ std::vector<MeanShift::Point> MeanShift::meanshift(const std::vector<Point> &poi
         for(int i=0; i<points.size(); i++){
             if (!stop_moving[i]) {
                 shift_point(shifted_points[i], points, kernel_bandwidth, point_new);
-                double shift_distance_sqr = euclidean_distance_sqr(point_new, shifted_points[i]);
+                double shift_distance_sqr = get_distance_squared(point_new, shifted_points[i]);
                 if(shift_distance_sqr > max_shift_distance){
                     max_shift_distance = shift_distance_sqr;
                 }
@@ -99,7 +99,7 @@ vector<Cluster> MeanShift::cluster(const std::vector<Point> &points,
 
         int c = 0;
         for (; c < clusters.size(); c++) {
-            if (euclidean_distance(shifted_points[i], clusters[c].mode) <= CLUSTER_EPSILON) {
+            if (get_distance(shifted_points[i], clusters[c].mode) <= CLUSTER_EPSILON) {
                 break;
             }
         }
